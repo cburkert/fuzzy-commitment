@@ -1,0 +1,2 @@
+bchlib >= 0.7
+BitVector >= 3.4
