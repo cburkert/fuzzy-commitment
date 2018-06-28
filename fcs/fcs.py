@@ -75,7 +75,8 @@ class FCS(Generic[K]):
             commitment.pseudonym,
             hashlib.sha256(msg_cand).digest()
         )
-        return (msg_match, msg_cand)
+        # use & for constant time and (no shortcut)
+        return (msg_match & (bitflips != -1), msg_cand)
 
     def verify(self, commitment: 'Commitment',
                candidate: K) -> Tuple[bool, bytes]:

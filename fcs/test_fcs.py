@@ -1,4 +1,5 @@
 import unittest
+import random
 import secrets
 
 import fcs
@@ -13,10 +14,12 @@ class TestFCS(unittest.TestCase):
 
     def random_flip_witness(self, numbits: int) -> bytes:
         witness_mod = bytearray(self.witness)
-        for i in range(numbits):
-            byte_num = secrets.randbelow(len(self.witness))
-            bit_num = secrets.randbelow(8)
-            witness_mod[byte_num] ^= (1 << bit_num)
+        # flip only bits in the range of the message and not the ecc
+        # otherwise verification would still pass
+        bit_nums = random.sample(range(len(self.witness) * 8
+                                       - self.cs.bch.ecc_bits), numbits)
+        for bit_num in bit_nums:
+            witness_mod[bit_num // 8] ^= (1 << (bit_num % 8))
         return bytes(witness_mod)
 
     def test_unaltered_witness(self):
