@@ -49,17 +49,17 @@ class FCS(Generic[K]):
         )
         return commitment
 
-    def commit_random_codeword_raw(self, witness: BitVector) -> 'Commitment':
+    def commit_random_message_raw(self, witness: BitVector) -> 'Commitment':
         assert self.k % 8 == 0
         key = secrets.token_bytes((self.k + 7) // 8)
         return self.commit_raw(key, witness)
 
     def commit(self, witness: K,
-               codeword: Optional[BitVector] = None) -> 'Commitment':
-        if codeword:
-            return self.commit_raw(codeword, self.extractor(witness))
+               message: Optional[bytes] = None) -> 'Commitment':
+        if message:
+            return self.commit_raw(message, self.extractor(witness))
         else:
-            return self.commit_random_codeword_raw(self.extractor(witness))
+            return self.commit_random_message_raw(self.extractor(witness))
 
     def verify_raw(self, commitment: 'Commitment',
                    candidate: BitVector) -> Tuple[bool, bytes]:
