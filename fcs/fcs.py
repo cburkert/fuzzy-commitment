@@ -73,7 +73,6 @@ class FCS(Generic[K]):
             codeword_cand_bytes[:-self.bch.ecc_bytes],
             codeword_cand_bytes[-self.bch.ecc_bytes:]
         )
-        msg_cand = bytes(msg_cand)[-((self.k + 7) // 8):]
         msg_match = secrets.compare_digest(
             commitment.pseudonym,
             hashlib.sha256(msg_cand).digest()
