@@ -11,7 +11,7 @@ def readme():
 
 setup(
     name='fuzzy-commitment',
-    version='0.1.0',
+    version='0.1.1',
     description='A fuzzy commitment scheme originally presented by Juels and Wattenberg',
     long_description=readme(),
     author='Christian Burkert',
