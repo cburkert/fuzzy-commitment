@@ -14,15 +14,15 @@ K = TypeVar('K')
 class FCS(Generic[K]):
     """Fuzzy commitment scheme"""
 
-    def __init__(self, n: int, k: int, t: int,
+    def __init__(self, n: int, t: int,
                  extractor: Optional[Callable[[K], BitVector]] = None) -> None:
         self.n = n
-        self.k = k
         self.t = t
         if extractor is None:
             extractor = self.byte_extractor
         self.extractor = extractor
         self.bch = bchlib.BCH(BCH_POLYNOMIAL, self.t)
+        self.k = self.n - self.bch.ecc_bits  # systematic code
 
     @classmethod
     def byte_extractor(cls, value: Any) -> BitVector:
@@ -37,12 +37,14 @@ class FCS(Generic[K]):
 
     def commit_raw(self, message: bytes,
                    witness: BitVector) -> 'Commitment':
+        assert len(message) == (self.k + 7) // 8
         ecc = self.bch.encode(message)
         codeword = message + ecc
         codeword_bv = BitVector(hexstring=codeword.hex())
         # TODO check if those bit string should not be rather
         # of the same length to protect the witness
-        #assert len(codeword_bv) == len(witness) == self.n
+        assert len(witness) == self.n
+        assert len(codeword_bv) >= len(witness)
         commitment = Commitment(
             hashlib.sha256(message).digest(),
             codeword_bv ^ witness,
@@ -50,7 +52,8 @@ class FCS(Generic[K]):
         return commitment
 
     def commit_random_message_raw(self, witness: BitVector) -> 'Commitment':
-        assert self.k % 8 == 0
+        # As long as the encoded key is longer than the witness,
+        # the latter is protected.
         key = secrets.token_bytes((self.k + 7) // 8)
         return self.commit_raw(key, witness)
 

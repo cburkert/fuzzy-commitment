@@ -8,8 +8,8 @@ import fcs
 class TestFCS(unittest.TestCase):
     def setUp(self):
         self.threshold = 2
-        self.cs = fcs.FCS(256, 128, self.threshold)
         self.witness = secrets.token_bytes(32)
+        self.cs = fcs.FCS(len(self.witness)*8, self.threshold)
         self.commitment = self.cs.commit(self.witness)
 
     def random_flip_witness(self, numbits: int) -> bytes:
