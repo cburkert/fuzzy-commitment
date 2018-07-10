@@ -14,15 +14,15 @@ K = TypeVar('K')
 class FCS(Generic[K]):
     """Fuzzy commitment scheme"""
 
-    def __init__(self, n: int, t: int,
+    def __init__(self, witness_nbits: int, t: int,
                  extractor: Optional[Callable[[K], BitVector]] = None) -> None:
-        self.n = n
         self.t = t
+        self.k = witness_nbits
         if extractor is None:
             extractor = self.byte_extractor
         self.extractor = extractor
         self.bch = bchlib.BCH(BCH_POLYNOMIAL, self.t)
-        self.k = self.n - self.bch.ecc_bits  # systematic code
+        self.n = self.k + self.bch.ecc_bits  # systematic code
 
     @classmethod
     def byte_extractor(cls, value: Any) -> BitVector:
@@ -37,24 +37,29 @@ class FCS(Generic[K]):
 
     def commit_raw(self, message: bytes,
                    witness: BitVector) -> 'Commitment':
-        assert len(message) == (self.k + 7) // 8
+        if len(witness) > self.k:
+            raise ValueError("Witness exceeds the given maximum length.")
         ecc = self.bch.encode(message)
         codeword = message + ecc
         codeword_bv = BitVector(hexstring=codeword.hex())
-        # TODO check if those bit string should not be rather
-        # of the same length to protect the witness
-        assert len(witness) == self.n
+        # The codeword needs to be larger than or equally long as the witness
+        # to maintain the HIDE property of the commitment.
         assert len(codeword_bv) >= len(witness)
+        # Reverse BitVectors for xor-ing to achieve right-padding
+        # of the witness. This is to minimize the errors introduced
+        # to the parity (ecc) which leads to indeterministic
+        # false-positive verifications.
         commitment = Commitment(
             hashlib.sha256(message).digest(),
-            codeword_bv ^ witness,
+            (codeword_bv.reverse() ^ witness.reverse()).reverse(),
         )
         return commitment
 
     def commit_random_message_raw(self, witness: BitVector) -> 'Commitment':
         # As long as the encoded key is longer than the witness,
-        # the latter is protected.
-        key = secrets.token_bytes((self.k + 7) // 8)
+        # the latter is protected. Hence round up to the next byte.
+        key_len = (self.k + 7) // 8
+        key = secrets.token_bytes(key_len)
         return self.commit_raw(key, witness)
 
     def commit(self, witness: K,
@@ -66,7 +71,7 @@ class FCS(Generic[K]):
 
     def verify_raw(self, commitment: 'Commitment',
                    candidate: BitVector) -> Tuple[bool, bytes]:
-        codeword_cand = candidate ^ commitment.auxiliar
+        codeword_cand = (commitment.auxiliar.reverse() ^ candidate.reverse()).reverse()
         codeword_cand_bytes = bytes.fromhex(
             codeword_cand.get_bitvector_in_hex())
         bitflips, msg_cand, _ = self.bch.decode(
