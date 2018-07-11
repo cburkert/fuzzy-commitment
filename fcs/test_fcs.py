@@ -14,10 +14,7 @@ class TestFCS(unittest.TestCase):
 
     def random_flip_witness(self, numbits: int) -> bytes:
         witness_mod = bytearray(self.witness)
-        # flip only bits in the range of the message and not the ecc
-        # otherwise verification would still pass
-        bit_nums = random.sample(range(len(self.witness) * 8
-                                       - self.cs.bch.ecc_bits), numbits)
+        bit_nums = random.sample(range(len(self.witness) * 8), numbits)
         for bit_num in bit_nums:
             witness_mod[bit_num // 8] ^= (1 << (bit_num % 8))
         return bytes(witness_mod)
@@ -47,10 +44,7 @@ class TestFCSTwo(unittest.TestCase):
 
     def random_flip_witness(self, numbits: int) -> bytes:
         witness_mod = bytearray(self.witness)
-        # flip only bits in the range of the message and not the ecc
-        # otherwise verification would still pass
-        bit_nums = random.sample(range(len(self.witness) * 8
-                                       - 0), numbits)
+        bit_nums = random.sample(range(len(self.witness) * 8), numbits)
         for bit_num in bit_nums:
             witness_mod[bit_num // 8] ^= (1 << (bit_num % 8))
         return bytes(witness_mod)
