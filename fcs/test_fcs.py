@@ -1,3 +1,4 @@
+# pylint: disable=missing-docstring,invalid-name
 import unittest
 import random
 import secrets
@@ -20,17 +21,17 @@ class TestFCS(unittest.TestCase):
         return bytes(witness_mod)
 
     def test_unaltered_witness(self):
-        valid, key = self.cs.verify(self.commitment, self.witness)
+        valid, _key = self.cs.verify(self.commitment, self.witness)
         self.assertTrue(valid)
 
     def test_altered_tolerable(self):
         witness_mod = self.random_flip_witness(self.threshold)
-        valid, key = self.cs.verify(self.commitment, witness_mod)
+        valid, _key = self.cs.verify(self.commitment, witness_mod)
         self.assertTrue(valid)
 
     def test_altered_intolerable(self):
         witness_mod = self.random_flip_witness(self.threshold + 1)
-        valid, key = self.cs.verify(self.commitment, witness_mod)
+        valid, _key = self.cs.verify(self.commitment, witness_mod)
         self.assertFalse(valid)
 
 
@@ -50,17 +51,17 @@ class TestFCSTwo(unittest.TestCase):
         return bytes(witness_mod)
 
     def test_unaltered_witness(self):
-        valid, key = self.cs.verify(self.commitment, self.witness)
+        valid, _key = self.cs.verify(self.commitment, self.witness)
         self.assertTrue(valid)
 
     def test_altered_tolerable(self):
         witness_mod = self.random_flip_witness(self.threshold)
-        valid, key = self.cs.verify(self.commitment, witness_mod)
+        valid, _key = self.cs.verify(self.commitment, witness_mod)
         self.assertTrue(valid)
 
     def test_altered_intolerable(self):
         witness_mod = self.random_flip_witness(self.threshold+200)
-        valid, key = self.cs.verify(self.commitment, witness_mod)
+        valid, _key = self.cs.verify(self.commitment, witness_mod)
         self.assertFalse(valid)
 
 

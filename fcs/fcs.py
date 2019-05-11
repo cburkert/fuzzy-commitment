@@ -1,3 +1,5 @@
+"""TODO
+"""
 import hashlib
 import secrets
 from typing import Any, Callable, Generic, Optional, Tuple, TypeVar
@@ -8,38 +10,75 @@ import bchlib
 
 BCH_POLYNOMIAL = 8219
 
-K = TypeVar('K')
+K = TypeVar('K')  # pylint: disable=invalid-name
+
+
+def _byte_extractor(value: Any) -> BitVector:
+    """Extracts a BitVector from a bytes-convertable value.
+
+    Args:
+        value: A value of any type that can be converted into bytes.
+
+    Returns:
+        A BitVector extracted from the value's byte representation.
+
+    Raises:
+        TypeError: Given value cannot be converted to bytes.
+    """
+    value_bytes = b""
+    try:
+        value_bytes = bytes(value)
+    except TypeError as error:
+        raise TypeError("Type %s is not directly convertible to bytes. "
+                        "You need to specifiy a custom extractor."
+                        % type(value), error)
+    return BitVector(hexstring=value_bytes.hex())
 
 
 class FCS(Generic[K]):
-    """Fuzzy commitment scheme"""
+    """Fuzzy commitment scheme.
 
-    def __init__(self, witness_nbits: int, t: int,
+    This implementation follows the proposal by Juels and Wattenberg [1]
+    with additions by Kelkboom et al. [2].
+
+    [1] http://doi.acm.org/10.1145/319709.319714
+    [2] https://ieeexplore.ieee.org/abstract/document/5634099/
+    """
+
+    def __init__(self, witness_nbits: int, tolerance: int,
                  extractor: Optional[Callable[[K], BitVector]] = None) -> None:
-        self.t = t
-        self.k = witness_nbits
+        """Initializes FCS.
+
+        Args:
+            witness_nbits: Length of the witness in bits.
+            tolerance: Number of changed bits tolerated by the scheme.
+            extractor: Optional function to extract a BitVector from K.
+        """
+        self._witlen = witness_nbits
         if extractor is None:
-            extractor = self.byte_extractor
-        self.extractor = extractor
-        self.bch = bchlib.BCH(BCH_POLYNOMIAL, self.t)
-        self.n = self.k + self.bch.ecc_bits  # systematic code
+            extractor = _byte_extractor
+        self._extractor = extractor
+        self._bch = bchlib.BCH(BCH_POLYNOMIAL, tolerance)
+        # Length of codeword: self._witlen + self._bch.ecc_bits
+        # This is due to the systematic code property.
 
-    @classmethod
-    def byte_extractor(cls, value: Any) -> BitVector:
-        value_bytes = b""
-        try:
-            value_bytes = bytes(value)
-        except TypeError as e:
-            raise TypeError("Type %s is not directly convertible to bytes. "
-                            "You need to specifiy a custom extractor."
-                            % type(value), e)
-        return BitVector(hexstring=value_bytes.hex())
+    def _commit_raw(self, message: bytes,
+                    witness: BitVector) -> 'Commitment':
+        """Commit on a raw binary message.
 
-    def commit_raw(self, message: bytes,
-                   witness: BitVector) -> 'Commitment':
-        if len(witness) > self.k:
+        Args:
+            message: A binary message to commit to.
+            witness: A witness to the commitment.
+
+        Returns:
+            A Commitment.
+
+        Raises:
+            ValueError: Witness is too long.
+        """
+        if len(witness) > self._witlen:
             raise ValueError("Witness exceeds the given maximum length.")
-        ecc = self.bch.encode(message)
+        ecc = self._bch.encode(message)
         codeword = message + ecc
         codeword_bv = BitVector(hexstring=codeword.hex())
         # The codeword needs to be larger than or equally long as the witness
@@ -55,28 +94,45 @@ class FCS(Generic[K]):
         )
         return commitment
 
-    def commit_random_message_raw(self, witness: BitVector) -> 'Commitment':
+    def _commit_random_message_raw(self, witness: BitVector) -> 'Commitment':
+        """Same as _commit_raw but uses a random message."""
         # As long as the encoded key is longer than the witness,
         # the latter is protected. Hence round up to the next byte.
-        key_len = (self.k + 7) // 8
+        key_len = (self._witlen + 7) // 8
         key = secrets.token_bytes(key_len)
-        return self.commit_raw(key, witness)
+        return self._commit_raw(key, witness)
 
     def commit(self, witness: K,
                message: Optional[bytes] = None) -> 'Commitment':
-        if message:
-            return self.commit_raw(message, self.extractor(witness))
-        else:
-            return self.commit_random_message_raw(self.extractor(witness))
+        """Create a fuzzy commitment over a given otherwise random message.
 
-    def verify_raw(self, commitment: 'Commitment',
-                   candidate: BitVector) -> Tuple[bool, bytes]:
-        codeword_cand = (commitment.auxiliar.reverse() ^ candidate.reverse()).reverse()
+        Args:
+            witness: Witness used for the commitment.
+            message: Optional binary message to commit to.
+
+        Returns:
+            A Commitment.
+
+        Raises:
+            ValueError: Witness is too long.
+        """
+        if message:
+            commitment = self._commit_raw(message, self._extractor(witness))
+        else:
+            commitment = self._commit_random_message_raw(
+                self._extractor(witness))
+        return commitment
+
+    def _verify_raw(self, commitment: 'Commitment',
+                    candidate: BitVector) -> Tuple[bool, bytes]:
+        """See verify."""
+        codeword_cand = (commitment.auxiliar.reverse()
+                         ^ candidate.reverse()).reverse()
         codeword_cand_bytes = bytes.fromhex(
             codeword_cand.get_bitvector_in_hex())
-        bitflips, msg_cand, _ = self.bch.decode(
-            codeword_cand_bytes[:-self.bch.ecc_bytes],
-            codeword_cand_bytes[-self.bch.ecc_bytes:]
+        bitflips, msg_cand, _ = self._bch.decode(
+            codeword_cand_bytes[:-self._bch.ecc_bytes],
+            codeword_cand_bytes[-self._bch.ecc_bytes:]
         )
         msg_match = secrets.compare_digest(
             commitment.pseudonym,
@@ -87,10 +143,20 @@ class FCS(Generic[K]):
 
     def verify(self, commitment: 'Commitment',
                candidate: K) -> Tuple[bool, bytes]:
-        return self.verify_raw(commitment, self.extractor(candidate))
+        """Verifies the given candidate against the commitment.
+
+        Args:
+            commitment:
+            candidate:
+
+        Returns:
+            True if the candidate matches the commitment, false otherwise.
+        """
+        return self._verify_raw(commitment, self._extractor(candidate))
 
 
 class Commitment(object):
+    """Commitment"""
     def __init__(self, pseudonym: bytes, auxiliar: BitVector) -> None:
         self.pseudonym = pseudonym
         self.auxiliar = auxiliar
