@@ -77,7 +77,8 @@ class FCS(Generic[K]):
             ValueError: Witness is too long.
         """
         if len(witness) > self._witlen:
-            raise ValueError("Witness exceeds the given maximum length.")
+            raise ValueError("Witness exceeds the given maximum length "
+                             f"({len(witness)}>{self._witlen}).")
         ecc = self._bch.encode(message)
         codeword = message + ecc
         codeword_bv = BitVector(hexstring=codeword.hex())
