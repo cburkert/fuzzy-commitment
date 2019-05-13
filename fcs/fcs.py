@@ -2,7 +2,7 @@
 """
 import hashlib
 import secrets
-from typing import Any, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 from BitVector import BitVector
 import bchlib
@@ -124,9 +124,9 @@ class FCS(Generic[K]):
                 self._extractor(witness))
         return commitment
 
-    def _verify_raw(self, commitment: 'Commitment',
-                    candidate: BitVector) -> Tuple[bool, bytes]:
-        """See verify."""
+    def _open_raw(self, commitment: 'Commitment',
+                  candidate: BitVector) -> Optional[bytes]:
+        """See open."""
         codeword_cand = (commitment.auxiliar.reverse()
                          ^ candidate.reverse()).reverse()
         codeword_cand_bytes = bytes.fromhex(
@@ -140,20 +140,36 @@ class FCS(Generic[K]):
             hashlib.sha256(msg_cand).digest()
         )
         # use & for constant time and (no shortcut)
-        return (msg_match & (bitflips != -1), msg_cand)
+        is_valid = msg_match & (bitflips != -1)
+        return bytes(msg_cand) if is_valid else None
+
+    def open(self, commitment: 'Commitment',
+             candidate: K) -> Optional[bytes]:
+        """Tries to opens the commitment with the candidate.
+
+        Args:
+            commitment: Commitment to open.
+            candidate: Candidate to open with.
+
+        Returns:
+            The committed message if the candidate is close enough to the
+            commitment or None otherwise.
+        """
+        return self._open_raw(commitment, self._extractor(candidate))
 
     def verify(self, commitment: 'Commitment',
-               candidate: K) -> Tuple[bool, bytes]:
+               candidate: K) -> bool:
         """Verifies the given candidate against the commitment.
 
         Args:
-            commitment:
-            candidate:
+            commitment: Commitment to verify against.
+            candidate: Candidate to verify.
 
         Returns:
-            True if the candidate matches the commitment, false otherwise.
+            True if the candidate is close enough to the commitment, False
+            otherwise.
         """
-        return self._verify_raw(commitment, self._extractor(candidate))
+        return self.open(commitment, candidate) is not None
 
 
 class Commitment(object):

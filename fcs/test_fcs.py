@@ -24,17 +24,17 @@ class TestFCS(unittest.TestCase):
         self.commitment = self.cs.commit(self.witness)
 
     def test_unaltered_witness(self):
-        valid, _key = self.cs.verify(self.commitment, self.witness)
+        valid = self.cs.verify(self.commitment, self.witness)
         self.assertTrue(valid)
 
     def test_altered_tolerable(self):
         witness_mod = random_flip(self.witness, self.threshold)
-        valid, _key = self.cs.verify(self.commitment, witness_mod)
+        valid = self.cs.verify(self.commitment, witness_mod)
         self.assertTrue(valid)
 
     def test_altered_intolerable(self):
         witness_mod = random_flip(self.witness, self.threshold + 1)
-        valid, _key = self.cs.verify(self.commitment, witness_mod)
+        valid = self.cs.verify(self.commitment, witness_mod)
         self.assertFalse(valid)
 
 
@@ -47,17 +47,17 @@ class TestFCSTwo(unittest.TestCase):
         self.commitment = self.cs.commit(self.witness)
 
     def test_unaltered_witness(self):
-        valid, _key = self.cs.verify(self.commitment, self.witness)
+        valid = self.cs.verify(self.commitment, self.witness)
         self.assertTrue(valid)
 
     def test_altered_tolerable(self):
         witness_mod = random_flip(self.witness, self.threshold)
-        valid, _key = self.cs.verify(self.commitment, witness_mod)
+        valid = self.cs.verify(self.commitment, witness_mod)
         self.assertTrue(valid)
 
     def test_altered_intolerable(self):
         witness_mod = random_flip(self.witness, self.threshold+1)
-        valid, _key = self.cs.verify(self.commitment, witness_mod)
+        valid = self.cs.verify(self.commitment, witness_mod)
         self.assertFalse(valid)
 
 
@@ -78,19 +78,16 @@ class TestFCSCustomExtractor(unittest.TestCase):
         self.commitment = self.cs.commit(self.witness, message=self.message)
 
     def test_unaltered_witness(self):
-        valid, msg = self.cs.verify(self.commitment, self.witness)
-        self.assertTrue(valid)
+        msg = self.cs.open(self.commitment, self.witness)
         self.assertEqual(msg, self.message)
 
     def test_altered_tolerable(self):
-        valid, msg = self.cs.verify(self.commitment, 2)  # one bit changed
-        self.assertTrue(valid)
+        msg = self.cs.open(self.commitment, 2)  # one bit changed
         self.assertEqual(msg, self.message)
 
     def test_altered_intolerable(self):
-        valid, msg = self.cs.verify(self.commitment, 4)  # three bits changed
-        self.assertFalse(valid)
-        self.assertNotEqual(msg, self.message)
+        msg = self.cs.open(self.commitment, 4)  # three bits changed
+        self.assertEqual(msg, None)
 
 
 if __name__ == '__main__':
