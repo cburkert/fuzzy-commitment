@@ -43,6 +43,14 @@ class FCS(Generic[K]):
 
     [1] http://doi.acm.org/10.1145/319709.319714
     [2] https://ieeexplore.ieee.org/abstract/document/5634099/
+
+    To use:
+    >>> cs = FCS[bytes](8, 1)
+    >>> c = cs.commit(b"\x01")  # uses a random message to commit to
+    >>> cs.verify(c, b"\x03")  # Verification succeeds. One bit changed.
+    True
+    >>> cs.verify(c, b"\x02")  # Verification fails. Two bits changed.
+    False
     """
 
     def __init__(self, witness_nbits: int, tolerance: int,
