@@ -54,19 +54,21 @@ class FCS(Generic[K]):
     """
 
     def __init__(self, witness_nbits: int, tolerance: int,
-                 extractor: Optional[Callable[[K], BitVector]] = None) -> None:
+                 extractor: Optional[Callable[[K], BitVector]] = None,
+                 polynomial: int = BCH_POLYNOMIAL) -> None:
         """Initializes FCS.
 
         Args:
             witness_nbits: Length of the witness in bits.
             tolerance: Number of changed bits tolerated by the scheme.
             extractor: Optional function to extract a BitVector from K.
+            polynomial: Optional polynomial for the BCH code (see bchlib).
         """
         self._witlen = witness_nbits
         if extractor is None:
             extractor = _byte_extractor
         self._extractor = extractor
-        self._bch = bchlib.BCH(BCH_POLYNOMIAL, tolerance)
+        self._bch = bchlib.BCH(polynomial, tolerance)
         # Length of codeword: self._witlen + self._bch.ecc_bits
         # This is due to the systematic code property.
 
