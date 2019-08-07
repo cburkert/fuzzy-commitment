@@ -14,6 +14,7 @@ setup(
     version='1.0.0',
     description='A fuzzy commitment scheme originally presented by Juels and Wattenberg',
     long_description=readme(),
+    long_description_content_type="text/markdown",
     author='Christian Burkert',
     url='https://github.com/cburkert/fuzzy-commitment',
     packages=find_packages(),
